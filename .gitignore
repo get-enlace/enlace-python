@@ -1,0 +1,28 @@
+# Enlace: each adapter's embedded UI bundle is a build artifact — populated by
+# scripts/dev-sync-ui.sh locally, or CI's registry-fetch release step, from
+# @get-enlace/ui. Never hand-edited or committed. Mirrors enlace-dotnet/enlace-java.
+packages/*/src/*/ui_embedded/*
+!packages/*/src/*/ui_embedded/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# Editors / OS
+.vscode/*
+!.vscode/settings.json
+.idea/
+.DS_Store

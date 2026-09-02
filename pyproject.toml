@@ -1,0 +1,29 @@
+[project]
+name = "enlace-python"
+version = "0.1.0"
+description = "Python adapters for Enlace. See github.com/get-enlace/enlace-ui for the canvas UI itself and the overall architecture."
+requires-python = ">=3.10"
+license = "MIT"
+# This root project is never published — see this workspace root's own
+# pyproject for why: it exists only to give `uv` one place to install every
+# member package's dependencies into a single resolved environment and to
+# run repo-wide dev tooling (ruff, pytest across packages). Mirrors
+# enlace-js's root package.json ("private": true, "workspaces": ["packages/*"]).
+package = false
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "types-PyYAML>=6.0",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
