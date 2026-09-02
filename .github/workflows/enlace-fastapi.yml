@@ -9,24 +9,10 @@ on:
       - uv.lock
       - scripts/**
       - .github/workflows/enlace-fastapi.yml
-  # Fired by enlace-ui's own release workflow after it publishes (dev or
-  # prod). This package pins an *exact* @get-enlace/ui version for its prod
-  # publishes (packages/enlace-fastapi/ui-version.txt), so it needs to
-  # react to every production release, not just majors — see
-  # handle-ui-release below. No workflow_dispatch escape hatch — a manual
-  # override is just a commit pushed to main.
   repository_dispatch:
     types: [enlace-ui-release]
 
 jobs:
-  # Only meaningful for a *production* dispatch — a dev dispatch's
-  # ui-version carries a "-dev.<run>" prerelease suffix, never a valid pin
-  # target. Does exactly one thing: pins the incoming version into
-  # ui-version.txt and commits it. Not a dependency of deploy-dev (no
-  # `needs:` from there to here) — deploy-dev doesn't use this pin at all
-  # (see below), and this commit's push can't retrigger the workflow
-  # anyway (GITHUB_TOKEN pushes don't, by GitHub's own loop-prevention
-  # rule).
   handle-ui-release:
     if: github.event_name == 'repository_dispatch' && github.event.client_payload.environment == 'production'
     runs-on: ubuntu-latest
@@ -71,30 +57,17 @@ jobs:
           echo "::error::failed to push pin commit after 5 attempts"
           exit 1
 
-  # Unconditional — runs on every trigger (push, or repository_dispatch for
-  # either environment). Fetches @get-enlace/ui's floating "dev" dist-tag
-  # from GitHub Packages, completely decoupled from ui-version.txt (which
-  # deploy-prod alone reads, transiently, right before publishing) — "dev"
-  # is the only thing that reliably exists in that registry.
   deploy-dev:
     runs-on: ubuntu-latest
     environment: development
     permissions:
       contents: write
       id-token: write
-      # An explicit `permissions:` block is exhaustive — anything left out
-      # is `none` for this job regardless of the repo's default token
-      # permissions. Needed to read @get-enlace/ui's `dev` tag from GitHub
-      # Packages below (GitHub Packages requires auth even for public
-      # reads — see scripts/ci-fetch-ui.sh's own header comment).
       packages: read
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-          # Full history + tags — "Check for changes" below diffs against
-          # this package's most recent enlace-fastapi-v* tag (dev or prod)
-          # to decide whether there's anything new to publish.
           fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v3
@@ -138,6 +111,7 @@ jobs:
           # GitHub, forever.
           current="$(uv version --short --package enlace-fastapi)"
           dev_version="${current}.dev${{ github.run_id }}"
+
           # --frozen: only the version string changes here, so there's
           # nothing to re-lock — this is never committed anyway (see
           # below), so leaving uv.lock untouched keeps this step's diff
@@ -153,20 +127,12 @@ jobs:
         if: steps.diff.outputs.changed == 'true'
         run: uv publish --publish-url https://test.pypi.org/legacy/ --trusted-publishing always
 
-      # Deliberately not committed — this job's checkout is thrown away
-      # when the runner exits, so the transient version bump above never
-      # touches the repo's real history; only the tag (matching what was
-      # actually published) is pushed.
       - name: Tag and push
         if: steps.diff.outputs.changed == 'true'
         run: |
           git tag "enlace-fastapi-v${{ steps.version.outputs.devVersion }}"
           git push origin "enlace-fastapi-v${{ steps.version.outputs.devVersion }}"
 
-  # Requires deploy-dev to have succeeded first — prod never ships anything
-  # that hasn't just gone out (or already sat unchanged) as a dev build.
-  # Also gated behind the Prod environment's required-reviewer approval:
-  # this job pauses here until someone approves it.
   deploy-prod:
     needs: deploy-dev
     runs-on: ubuntu-latest
@@ -177,18 +143,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # ref: main — must see handle-ui-release's pin commit from this
-          # same run (production dispatch case), not the stale
-          # pre-dispatch SHA.
           ref: main
           fetch-depth: 0
 
-      # Hard guard, not just documentation: fail fast, before any build
-      # work, if there's nothing real to pin. ui-version.txt starts life
-      # as "unreleased" and only ever becomes real once enlace-ui's own
-      # first prod release fires a dispatch that pins it — publishing with
-      # anything else in there would ship a broken embedded UI bundle to
-      # every real consumer.
       - name: Refuse to publish without a real pinned @get-enlace/ui version
         run: |
           pinned="$(cat packages/enlace-fastapi/ui-version.txt 2>/dev/null || true)"
@@ -214,10 +171,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # Whatever's already committed in pyproject.toml is what gets
-      # published — semver bump type (patch/minor/major) is a human call,
-      # decided by editing pyproject.toml before this runs, not guessed by
-      # CI.
       - name: Read current version
         id: current
         run: echo "version=$(uv version --short --package enlace-fastapi)" >> "$GITHUB_OUTPUT"
@@ -225,10 +178,6 @@ jobs:
       - name: Build
         run: uv build --package enlace-fastapi
 
-      # Trusted Publishing (OIDC): this job's id-token exchanges for a
-      # short-lived PyPI API token at publish time via the Trusted
-      # Publisher policy configured on PyPI's side (see CONTRIBUTING.md) —
-      # nothing long-lived is stored in this repo.
       - name: Publish to PyPI
         run: uv publish --trusted-publishing always
 
@@ -237,10 +186,6 @@ jobs:
           git tag "enlace-fastapi-v${{ steps.current.outputs.version }}"
           git push origin "enlace-fastapi-v${{ steps.current.outputs.version }}"
 
-      # Stages the next release as a patch bump on top of what was just
-      # published. Edit packages/enlace-fastapi/pyproject.toml by hand
-      # before the next prod release if it actually needs a bigger
-      # (minor/major) bump.
       - name: Compute next patch version
         id: next
         run: |
