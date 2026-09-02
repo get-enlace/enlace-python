@@ -82,6 +82,12 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      # An explicit `permissions:` block is exhaustive — anything left out
+      # is `none` for this job regardless of the repo's default token
+      # permissions. Needed to read @get-enlace/ui's `dev` tag from GitHub
+      # Packages below (GitHub Packages requires auth even for public
+      # reads — see scripts/ci-fetch-ui.sh's own header comment).
+      packages: read
     steps:
       - uses: actions/checkout@v4
         with:
