@@ -141,6 +141,17 @@ jobs:
           git tag "enlace-fastapi-v${{ steps.version.outputs.devVersion }}"
           git push origin "enlace-fastapi-v${{ steps.version.outputs.devVersion }}"
 
+      - name: Trigger enlace-examples deployment
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            https://api.github.com/repos/get-enlace/enlace-examples/dispatches \
+            -d '{"event_type":"enlace-fastapi-deployed"}'
+
   deploy-prod:
     needs: deploy-dev
     runs-on: ubuntu-latest

@@ -23,8 +23,8 @@ if [[ ! -d "$PKG_ROOT" ]]; then
 fi
 
 # enlace-ui is an npm workspace (root package.json: "workspaces": ["packages/*"]) —
-# @get-enlace/ui actually builds to packages/enlace-ui/dist, not <checkout>/dist.
-UI_PACKAGE_DIR="$UI_DIR/packages/enlace-ui"
+# @get-enlace/ui actually builds to packages/ui/dist, not <checkout>/dist.
+UI_PACKAGE_DIR="$UI_DIR/packages/ui"
 
 # The import package name is whatever single directory lives under src/ —
 # e.g. packages/enlace-fastapi/src/enlace_fastapi.
