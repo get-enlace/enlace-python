@@ -1,6 +1,6 @@
 [project]
 name = "enlace-fastapi"
-version = "0.0.1"
+version = "0.0.2"
 description = "Simple FastAPI adapter for @get-enlace/ui. Early dev preview: no persistence yet (serves the spec + UI bundle only)."
 readme = "README.md"
 license = "MIT"
