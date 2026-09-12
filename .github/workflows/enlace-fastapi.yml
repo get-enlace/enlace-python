@@ -143,14 +143,18 @@ jobs:
 
       - name: Trigger enlace-examples deployment
         if: steps.diff.outputs.changed == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: token $GITHUB_TOKEN" \
+          http_code="$(curl -sS -o /tmp/dispatch_response.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CROSS_REPO_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/get-enlace/enlace-examples/dispatches \
-            -d '{"event_type":"enlace-fastapi-deployed"}'
+            -d '{"event_type":"enlace-fastapi-deployed"}')"
+          cat /tmp/dispatch_response.json
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "::error::dispatch to enlace-examples failed (HTTP $http_code)"
+            exit 1
+          fi
+          echo "dispatch to enlace-examples accepted (HTTP $http_code)"
 
   deploy-prod:
     needs: deploy-dev
